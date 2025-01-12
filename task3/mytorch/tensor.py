@@ -9,10 +9,13 @@ from typing import Optional, Union, Tuple, List
 from backend import NDArray, Device, fn # underlying CUDA-implemented NDArray and functions
 from .utils import *
 
+__all__ = ['Tensor']
 
 class Tensor(NDArray):
     """The class wrapping NDArray to provide convenient interfaces and automatic differentiation."""
-    grad: Union['Tensor', None] #TODO: implement autodiff
+    op: Optional['Op']
+    inputs: List['Tensor']
+    requires_grad: bool
 
     ### Initialization ### 
     def __init__(self,
@@ -21,7 +24,7 @@ class Tensor(NDArray):
                requires_grad: bool = False) -> None:
         device = Tensor._str2device(device)
         if isinstance(input, Tuple): 
-            assert all(d > 0 for d in input), "tuple should contain only postive integers"
+            assert all(d > 0 for d in input), "tuple should contain only postive integer"
             super().__init__(list(input), device)
         elif isinstance(input, np.ndarray) or isinstance(input, List):
             super().__init__(NDArray.from_array(input, device))
@@ -31,13 +34,10 @@ class Tensor(NDArray):
             super().__init__(input)
         else: 
             raise NotImplementedError(f"Unsupported input type: {type(input)}")
-        
-        if requires_grad:   #TODO: Build autodiff based on Tensor.requires_grad
-            self.requires_grad = True
-            self.grad = Tensor(self.shape, self.device)
-        else:
-            self.requires_grad = False
-            self.grad = None
+        self.requires_grad = requires_grad
+        self.op = None
+        self.inputs = None
+
     
     ### Basic properties ### 
     @classmethod
@@ -132,14 +132,15 @@ class Tensor(NDArray):
     
     ### Fill functions ### 
     @classmethod
-    def fill(cls, 
+    def const(cls, 
              shape: Tuple[int], 
              value: float, 
              device: str = 'gpu', 
              requires_grad: bool = False) -> 'Tensor':
-        """Generate a tensor filled with `value` of shape `shape`."""
+        """Generate a tensor filled with const `value` of shape `shape`."""
         return Tensor(NDArray(list(shape), value, Tensor._str2device(device)),
                       requires_grad=requires_grad)
+                    
     
     @classmethod
     def zeros(cls,
@@ -147,7 +148,15 @@ class Tensor(NDArray):
               device: str = 'gpu',
               requires_grad: bool = False) -> 'Tensor':
         """Generate a tensor filled with 0 of shape `shape`."""
-        return cls.fill(shape, 0., device, requires_grad)
+        return cls.const(shape, 0., device, requires_grad)
+    
+    @classmethod
+    def zeros_like(cls,
+                   tensor: 'Tensor',
+                   device: str = 'gpu',
+                   requires_grad: bool = False) -> 'Tensor':
+        """Generate a tensor filled with 0 of `tensor`'s shape."""
+        return cls.zeros(tensor.shape, 0., device, requires_grad)
     
     @classmethod
     def ones(cls,
@@ -155,7 +164,15 @@ class Tensor(NDArray):
              device: str = 'gpu',
              requires_grad: bool = False) -> 'Tensor':
         """Generate a tensor filled with 1 of shape `shape`"""
-        return cls.fill(shape, 1., device, requires_grad)
+        return cls.const(shape, 1., device, requires_grad)
+    
+    @classmethod
+    def ones_like(cls,
+                  tensor: 'Tensor',
+                  device: str = 'gpu',
+                  requires_grad: bool = False) -> 'Tensor':
+        """Generate a tensor filled with 1 of `tensor`'s shape."""
+        return cls.ones(tensor.shape, 1., device, requires_grad)
     
     ### Random number generation ### 
     @classmethod
@@ -180,6 +197,159 @@ class Tensor(NDArray):
         return Tensor(NDArray.randn(list(shape), mean, std, Tensor._str2device(device)), 
                       requires_grad=requires_grad)
         #! curandn只支持偶数size，这里封装后也支持奇数size
+
+    ### Autograd implementation ### 
+    def backward(self, grad: Optional['Tensor'] = None) -> None:
+        """Backward pass to compute gradients."""
+        assert self.requires_grad, "This tensor does not require gradient!"
+        assert self.grad.shape == self.shape, "Shape mismatch between this tensor and its gradient!"
+        raise NotImplementedError() #TODO: 实现自动微分算法
+    
+    def zero_grad(self) -> None:
+        """Zero out the gradient of this tensor."""
+        assert self.requires_grad, "This tensor does not require gradient!"
+        self.grad = Tensor.zeros_like(self)
+
+    def _is_leaf(self) -> bool:
+        """Return True if this tensor is a leaf node."""
+        return self.op is None
+    
+    @staticmethod
+    def _make_from_op(op: 'Op', inputs: List['Tensor']):
+        cached_data = op.compute(*inputs)
+        tensor = Tensor(cached_data)
+        tensor._init(op, inputs)
+        return tensor
+    
+    def _init(self, op: 'Op', inputs: List['Tensor']):
+        """Initialize a non-leaf tensor with an operation and its inputs."""
+        self.op = op
+        self.inputs = inputs
+        self.cached_data = None
+        self.requires_grad = any(input.requires_grad for input in inputs)
+    
+    ### Overloaded operators w/ autograd ###
+    def __add__(self, other: Union['Tensor', float]) -> 'Tensor':
+        if isinstance(other, Tensor):
+            return EwiseAdd()(self, other)
+        elif isinstance(other, float):
+            return ScalarAdd(other)(self)
+        else:
+            raise NotImplementedError(f"Unsupported type for addition: {type(other)}")
+    __radd__ = __add__
+        
+    def __mul__(self, other: Union['Tensor', float]) -> 'Tensor':
+        if isinstance(other, Tensor):
+            return EwiseMul()(self, other)
+        elif isinstance(other, float):
+            return ScalarMul(other)(self)
+        else:
+            raise NotImplementedError(f"Unsupported type for multiplication: {type(other)}")
+    __rmul__ = __mul__
+    
+    def __neg__(self) -> 'Tensor':
+        return Negate()(self)
+    
+    def __sub__(self, other: Union['Tensor', float]) -> 'Tensor':
+        if isinstance(other, Tensor):
+            return EwiseAdd()(self, -other)
+        elif isinstance(other, float):
+            return ScalarAdd(-other)(self)
+        else:
+            raise NotImplementedError(f"Unsupported type for subtraction: {type(other)}")
+    
+    def __rsub__(self, other: Union['Tensor', float]) -> 'Tensor':
+        return -(self - other)
+    
+    def __pow__(self, other: float) -> 'Tensor':
+        return ScalarPow(other)(self)
+    
+    def __truediv__(self, other: Union['Tensor', float]) -> 'Tensor':
+        if isinstance(other, Tensor):
+            return self * (other ** -1)
+        elif isinstance(other, float):
+            return self * (1 / other)
+        else:
+            raise NotImplementedError(f"Unsupported type for true division: {type(other)}")
+
+    def __rtruediv__(self, other: Union['Tensor', float]) -> 'Tensor':
+        return self ** -1 * other
+        
+    #TODO: matmul, exp, log, sum, mean, max, min, broadcast, reshape(改造)....
+
+    #TODO: 实现自动微分算法
+    
+
+class Op():
+    """The base class for all operations."""
+    def __call__(self, *args):
+        return Tensor._make_from_op(self, args)
+
+    
+class EwiseAdd(Op):
+    """Element-wise addition operation."""
+    def compute(self, x: NDArray, y: NDArray):
+        return NDArray.__add__(x, y)
+    
+    def gradient(self, grad: Tensor, node: Tensor):
+        return grad, grad
+    
+class EwiseMul(Op):
+    """Element-wise multiplication operation."""
+    def compute(self, x: NDArray, y: NDArray) -> NDArray:
+        return NDArray.__mul__(x, y)
+    
+    def gradient(self, grad: Tensor, node: Tensor):
+        return grad * node.inputs[1], grad * node.inputs[0]
+    
+class ScalarAdd(Op):
+    """Scalar addition operation."""
+    def __init__ (self, scalar: float):
+        self.scalar = scalar
+
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.__add__(x, self.scalar)
+        
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad
+    
+class ScalarMul(Op):
+    """Scalar multiplication operation."""
+    def __init__ (self, scalar: float):
+        self.scalar = scalar
+
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.__mul__(x, self.scalar)
+        
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad * self.scalar
+    
+class Negate(Op):
+    """Negation operation."""
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.__mul__(x, -1)
+    
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return -grad
+    
+class ScalarPow(Op):
+    """Scalar power operation."""
+    def __init__ (self, scalar: float):
+        self.scalar = scalar
+
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.__pow__(x, self.scalar)
+        
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad * self.scalar * node.inputs[0] ** (self.scalar - 1)
+    
+
+    
+    
+    
+
+
+    
     
 
 

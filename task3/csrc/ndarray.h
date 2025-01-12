@@ -65,4 +65,13 @@ class NDArray {
         static int shape2size(const shape_t shape);
 };
 
+NDArray& mul(const NDArray& A, const NDArray& B); // element-wise multiplication
+NDArray& mul_scalar(const NDArray& A, const scalar_t B); 
+
+NDArray& add_scalar(const NDArray& A, const scalar_t B);
+NDArray& sub_scalar(const NDArray& A, const scalar_t B);
+NDArray& div_scalar(const NDArray& A, const scalar_t B);
+
+NDArray& pow_scalar(const NDArray& A, const scalar_t B); 
+
 #endif

@@ -277,3 +277,47 @@ NDArray& NDArray::swap(const int axis1, const int axis2) {
         this->p, dst->p);
     return *dst;
 }
+
+NDArray& mul(const NDArray& A, const NDArray& B) {
+    assert(A.shape == B.shape);
+    NDArray* C = new NDArray(A.shape, A.device);
+    thrust::device_ptr<scalar_t> A_ptr(A.p), B_ptr(B.p), C_ptr(C->p);
+    thrust::transform(A_ptr, A_ptr + A.size, B_ptr, C_ptr, thrust::multiplies<scalar_t>());
+    return *C;
+}
+
+NDArray& mul_scalar(const NDArray& A, const scalar_t B) {
+    NDArray* C = new NDArray(A.shape, A.device);
+    thrust::device_ptr<scalar_t> A_ptr(A.p), C_ptr(C->p);
+    thrust::transform(A_ptr, A_ptr + A.size, C_ptr, [=] __device__ (scalar_t x) { return x * B; });
+    return *C;
+}
+
+NDArray& add_scalar(const NDArray& A, const scalar_t B) {
+    NDArray* C = new NDArray(A.shape, A.device);
+    thrust::device_ptr<scalar_t> A_ptr(A.p), C_ptr(C->p);
+    thrust::transform(A_ptr, A_ptr + A.size, C_ptr, [=] __device__ (scalar_t x) { return x + B; });
+    return *C;
+}
+
+NDArray& sub_scalar(const NDArray& A, const scalar_t B) {
+    NDArray* C = new NDArray(A.shape, A.device);
+    thrust::device_ptr<scalar_t> A_ptr(A.p), C_ptr(C->p);
+    thrust::transform(A_ptr, A_ptr + A.size, C_ptr, [=] __device__ (scalar_t x) { return x - B; });
+    return *C;
+}
+
+NDArray& div_scalar(const NDArray& A, const scalar_t B) {
+    assert (B != 0);
+    NDArray* C = new NDArray(A.shape, A.device);
+    thrust::device_ptr<scalar_t> A_ptr(A.p), C_ptr(C->p);
+    thrust::transform(A_ptr, A_ptr + A.size, C_ptr, [=] __device__ (scalar_t x) { return x / B; });
+    return *C;
+}
+
+NDArray& pow_scalar(const NDArray& A, const scalar_t B) {
+    NDArray* C = new NDArray(A.shape, A.device);
+    thrust::device_ptr<scalar_t> A_ptr(A.p), C_ptr(C->p);
+    thrust::transform(A_ptr, A_ptr + A.size, C_ptr, [=] __device__ (scalar_t x) { return pow(x, B); });
+    return *C;
+}

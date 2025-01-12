@@ -14,7 +14,7 @@ assert torch.cuda.is_available(), 'CUDA is not available'
 
 mnist_path = '../data'
 
-batchsize = 256
+batchsize = 10000
 lr = 2e-3
 epochs = 20
 device = 'cuda'

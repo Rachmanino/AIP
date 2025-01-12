@@ -16,13 +16,13 @@ assert torch.cuda.device_count() >= 2, 'At least 2 GPUs are required'
 
 mnist_path = '../data'
 
-batchsize = 256
+batchsize = 100000
 lr = 2e-3
 epochs = 20
-device = torch.device('cuda')
+device = torch.device('cuda:0')
 
-model = CNN().to(device)
-model = nn.DataParallel(model)
+model = CNN()
+model = nn.DataParallel(model).to(device)
 
 train_dataset = MNIST(root=mnist_path, train=True, download=True, transform=torchvision.transforms.ToTensor())
 test_dataset = MNIST(root=mnist_path, train=False, download=True, transform=torchvision.transforms.ToTensor())
