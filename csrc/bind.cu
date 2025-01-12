@@ -17,6 +17,7 @@ PYBIND11_MODULE(backend, m) {
         .def("from_array", &NDArray::from_array)
         .def("tolist", &NDArray::tolist)
         .def("rand", &NDArray::rand)
+        .def("randn", &NDArray::randn)
         .def("__add__", &NDArray::operator +)
         .def("__sub__", &NDArray::operator -)
         .def("__matmul__", &NDArray::operator *)

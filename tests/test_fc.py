@@ -1,6 +1,6 @@
 import pytest
 from tensor import Tensor
-from nn import Linear
+from MyTorch.nn import Linear
 
 import torch
 from torch.nn import functional as F

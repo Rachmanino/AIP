@@ -1,6 +1,6 @@
 import pytest
 from tensor import Tensor
-from nn import Conv2d, MaxPool2d
+from MyTorch.nn import Conv2d, MaxPool2d
 
 import torch
 from torch.nn import functional as F

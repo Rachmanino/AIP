@@ -1,6 +1,6 @@
 import pytest
 from tensor import Tensor
-from nn import Sigmoid, ReLU
+from MyTorch.nn import Sigmoid, ReLU
 
 import torch
 from torch.nn import functional as F

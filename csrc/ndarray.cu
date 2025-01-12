@@ -63,17 +63,35 @@ list_t& NDArray::tolist() {
     return *res;
 }
 
+/* Generate a random NDArray ~ U[0,1] of specific shape on the device. */
 NDArray& NDArray::rand(const shape_t shape, scalar_t l, scalar_t h, Device device) {
-    /* Generate a random NDArray ~ U[0,1] of specific shape on the device. */
     NDArray* dst = new NDArray(shape, GPU);
     curandGenerator_t gen;
     curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
-    curandSetPseudoRandomGeneratorSeed(gen, 114514ULL);
+    curandSetPseudoRandomGeneratorSeed(gen, time(NULL));
     curandGenerateUniform(gen, dst->p, dst->size);
     thrust::device_ptr<scalar_t> p(dst->p);
     thrust::transform(p, p + dst->size, p, [=] __device__ (scalar_t x) { return x * (h - l) + l; });
     curandDestroyGenerator(gen);
-    return *dst;
+    return dst->to(device);
+}
+
+/* Generate a random NDArray ~ N(mean, std) of specific shape on the device. */
+NDArray& NDArray::randn(const shape_t shape, scalar_t mean, scalar_t std, Device device) {
+    NDArray* dst = new NDArray(shape, GPU);
+    curandGenerator_t gen;
+    curandCreateGenerator(&gen, CURAND_RNG_PSEUDO_DEFAULT);
+    curandSetPseudoRandomGeneratorSeed(gen, time(NULL));
+    if (dst->size % 2 == 0) {   //!curandGenerateNormal only support even number
+        curandGenerateNormal(gen, dst->p, dst->size, mean, std);
+    } else {
+        curandGenerateNormal(gen, dst->p, dst->size-1, mean, std);
+        NDArray* tmp = new NDArray({2}, GPU);
+        curandGenerateNormal(gen, tmp->p, 2, mean, std);
+        cudaMemcpy(dst->p + dst->size - 1, tmp->p, sizeof(scalar_t), cudaMemcpyDeviceToDevice);
+        delete tmp;
+    }
+    return dst->to(device);
 }
 
 NDArray& NDArray::operator = (const NDArray& src) {

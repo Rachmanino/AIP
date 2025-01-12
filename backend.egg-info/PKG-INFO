@@ -5,6 +5,6 @@ Author: Tong WU
 Author-email: 2200013212@stu.pku.edu.cn
 License: MIT
 Classifier: License :: OSI Approved :: MIT License
-Requires-Python: >=3.10
+Requires-Python: >=3.12
 Requires-Dist: torch
 Requires-Dist: torchvision

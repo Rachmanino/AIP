@@ -1,7 +1,7 @@
 import pytest
 import os
 from tensor import Tensor
-from nn import CELoss
+from MyTorch.nn import CELoss
 
 import torch
 from torch.nn import functional as F

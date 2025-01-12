@@ -5,7 +5,7 @@ import os
 __version__ = '0.1.0'
 
 dir = 'csrc'
-src = ['{}/{}'.format(dir, src) for src in os.listdir(dir) if src.endswith('.cu') or src.endswith('.cpp')]
+src = [f'{dir}/{src}' for src in os.listdir(dir) if src.endswith('.cu') or src.endswith('.cpp')]
 
 setup(
     name = 'backend',
@@ -15,22 +15,22 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     install_requires=['torch', 'torchvision'],
-    python_requires='>=3.10',
+    python_requires='>=3.12',
     license='MIT',
     ext_modules=[
         CUDAExtension(
             name = 'backend',
             sources = src,
             extra_compile_args = {
-                'nvcc': ['--extended-lambda'] # to enable the use of lambda in CUDA
+                'nvcc': ['--extended-lambda'] # Enable the use of lambda expr. in CUDA codes
             }
         )
     ],
-    include_dirs = ['/home/sp_test/anaconda/anaconda3/envs/aip/lib/python3.10/site-packages/torch/include', 
+    include_dirs = [#'/home/sp_test/anaconda/anaconda3/envs/aip/lib/python3.10/site-packages/torch/include', 
                     # path to torch in the conda env, which contains pybind11 folder.
-                     '/home/sp_test/anaconda/anaconda3/envs/aip/include/python3.10',
+                    #'/home/sp_test/anaconda/anaconda3/envs/aip/include/python3.10',
                     # path to python3.10 include folder in the conda env
-                     dir],
+                    dir],
     cmdclass={
         'build_ext': BuildExtension
     },

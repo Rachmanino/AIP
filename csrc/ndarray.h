@@ -18,6 +18,7 @@
 #include<pybind11/stl.h>
 
 #define MAX_DIMS 10
+#define SEED 114514ULL
 
 namespace py = pybind11;
 typedef float scalar_t; // Currently only support float type
@@ -43,6 +44,7 @@ class NDArray {
         list_t& tolist(); // to Python list
 
         static NDArray& rand(const shape_t shape, scalar_t l, scalar_t h, Device device);
+        static NDArray& randn(const shape_t shape, scalar_t mean, scalar_t std, Device device);
 
         NDArray(const NDArray& src); // deep copy
         NDArray& operator = (const NDArray& src); // deep copy
