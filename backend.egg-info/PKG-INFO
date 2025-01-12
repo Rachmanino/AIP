@@ -1,0 +1,10 @@
+Metadata-Version: 2.1
+Name: backend
+Version: 0.1.0
+Author: Tong WU
+Author-email: 2200013212@stu.pku.edu.cn
+License: MIT
+Classifier: License :: OSI Approved :: MIT License
+Requires-Python: >=3.10
+Requires-Dist: torch
+Requires-Dist: torchvision
