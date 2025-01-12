@@ -1,5 +1,7 @@
-from mytorch.tensor import Tensor
+from .tensor import Tensor
 import torchvision
+
+__all__ = ['load_mnist']
 
 def load_mnist(download_path: str = './data'):
     """Load the MNIST dataset from torchvision.datasets.MNIST

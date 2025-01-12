@@ -7,7 +7,7 @@ import numpy as np
 from typing import Optional, Union, Tuple, List
 
 from backend import NDArray, Device, fn # underlying CUDA-implemented NDArray and functions
-from mytorch.utils import *
+from .utils import *
 
 
 class Tensor(NDArray):
@@ -160,7 +160,7 @@ class Tensor(NDArray):
     ### Random number generation ### 
     @classmethod
     def rand(cls, 
-             shape: Tuple[int], 
+             shape: Tuple[int] = (1,), 
              low: float = 0.,
              high: float = 1.,
              device: str = 'gpu',
@@ -171,7 +171,7 @@ class Tensor(NDArray):
     
     @classmethod
     def randn(cls, 
-              shape: Tuple[int], 
+              shape: Tuple[int] = (1,), 
               mean: float = 0., 
               std: float = 1., 
               device: str = 'gpu',
@@ -183,7 +183,7 @@ class Tensor(NDArray):
     
 
 
-
+    
 
 
 

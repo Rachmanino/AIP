@@ -3,12 +3,22 @@ import numpy as np
 from typing import Optional, Tuple, List, Union
 
 from backend import NDArray, Device, fn
-from mytorch.tensor import Tensor
+from ..tensor import Tensor
 
 from copy import deepcopy
 
+__all__ = [
+    'Module',
+    'Linear',
+    'Conv2d',
+    'MaxPool2d',
+    'Sigmoid',
+    'ReLU',
+    'CELoss'
+]
+
 class Module():
-    """Base class for all NN modules."""
+    """Base abstract class for all NN modules."""
     def forward():
         raise NotImplementedError()
     
