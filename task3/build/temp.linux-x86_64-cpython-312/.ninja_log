@@ -1,4 +1,0 @@
-# ninja log v5
-1	9684	1736694914692405664	/root/aip/task3/build/temp.linux-x86_64-cpython-312/csrc/ndarray.o	d15343f23490e17b
-1	10871	1736694915872483039	/root/aip/task3/build/temp.linux-x86_64-cpython-312/csrc/fn.o	33a34ef36d5cb455
-1	12621	1736694917616597062	/root/aip/task3/build/temp.linux-x86_64-cpython-312/csrc/bind.o	b105e2a0f00c9a41
