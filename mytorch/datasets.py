@@ -1,4 +1,4 @@
-from tensor import Tensor
+from mytorch.tensor import Tensor
 import torchvision
 
 def load_mnist(download_path: str = './data'):
@@ -13,7 +13,7 @@ def load_mnist(download_path: str = './data'):
             - 'test': A dictionary with keys 'images' and 'labels' for the test images and labels
     """
     train_dataset = torchvision.datasets.MNIST(root=download_path, train=True, download=True)
-    test_dataset = torchvision.datasets.MNIST(root=download_path, train=False, download=False)
+    test_dataset = torchvision.datasets.MNIST(root=download_path, train=False, download=True)
 
     return {'train': {'images': Tensor(train_dataset.data), 'labels': Tensor(train_dataset.targets)},
             'test': {'images': Tensor(test_dataset.data), 'labels': Tensor(test_dataset.targets)}}

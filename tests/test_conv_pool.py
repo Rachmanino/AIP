@@ -1,6 +1,8 @@
 import pytest
-from tensor import Tensor
-from MyTorch.nn import Conv2d, MaxPool2d
+import sys
+sys.path.append('..')
+from mytorch import Tensor
+from mytorch.nn import Conv2d, MaxPool2d
 
 import torch
 from torch.nn import functional as F

@@ -2,20 +2,19 @@
 Implementation of Tensor class, which wraps NDArray.
 """
 
-
 import torch
 import numpy as np
-from typing import Optional, Tuple, List, Union
+from typing import Optional, Union, Tuple, List
 
 from backend import NDArray, Device, fn # underlying CUDA-implemented NDArray and functions
-from utils import prod
+from mytorch.utils import *
 
 
 class Tensor(NDArray):
     """The class wrapping NDArray to provide convenient interfaces and automatic differentiation."""
     grad: Union['Tensor', None] #TODO: implement autodiff
 
-    ### Initialization
+    ### Initialization ### 
     def __init__(self,
                input: Union[Tuple[int], List, np.ndarray, torch.Tensor, 'Tensor', NDArray],
                device: str = 'gpu',
@@ -40,7 +39,7 @@ class Tensor(NDArray):
             self.requires_grad = False
             self.grad = None
     
-    ### Basic properties
+    ### Basic properties ### 
     @classmethod
     def _str2device(cls, device: str) -> Device:
         """Convert string to Device enum."""
@@ -78,7 +77,7 @@ class Tensor(NDArray):
     def __str__(self) -> str:
         return self.numpy().__str__()
     
-    ### Switch formats
+    ### Switch formats ### 
     def numpy(self) -> np.ndarray:
         """Convert a tensor to numpy.ndarray"""
         return np.array(self.tolist()).reshape(self.shape)
@@ -87,7 +86,7 @@ class Tensor(NDArray):
         """Convert a tensor to torch.Tensor"""
         return torch.tensor(self.numpy(), requires_grad=self.requires_grad)
     
-    ### Move between devices
+    ### Move between devices ### 
     def to(self, device: str) -> 'Tensor':
         """Move a tensor to device`device`."""
         return Tensor(super().to(Tensor._str2device(device)))
@@ -106,7 +105,11 @@ class Tensor(NDArray):
         assert self.ndim == 2, "Tensor.T only supports transposing 2D tensors!"
         return Tensor(super().T())
     
-    ### Basic operations
+    ### Basic operations ### 
+    def detach(self) -> 'Tensor':
+        """Detach a tensor from the computation graph."""
+        return Tensor(self, requires_grad=False)
+
     def reshape(self, shape: Tuple[int]) -> 'Tensor':
         """
         Reshape the tensor to the given shape.
@@ -127,7 +130,7 @@ class Tensor(NDArray):
         assert 0 <= axis1 < self.ndim and 0 <= axis2 < self.ndim, "At least one of the axes is out of range!"
         return Tensor(super().swap(axis1, axis2))
     
-    ### Fill functions
+    ### Fill functions ### 
     @classmethod
     def fill(cls, 
              shape: Tuple[int], 
@@ -154,7 +157,7 @@ class Tensor(NDArray):
         """Generate a tensor filled with 1 of shape `shape`"""
         return cls.fill(shape, 1., device, requires_grad)
     
-    ### Random number generation
+    ### Random number generation ### 
     @classmethod
     def rand(cls, 
              shape: Tuple[int], 

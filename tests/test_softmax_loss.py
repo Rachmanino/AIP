@@ -1,7 +1,8 @@
 import pytest
-import os
-from tensor import Tensor
-from MyTorch.nn import CELoss
+import sys
+sys.path.append('..')
+from mytorch import Tensor
+from mytorch.nn import CELoss
 
 import torch
 from torch.nn import functional as F

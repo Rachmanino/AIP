@@ -1,6 +1,8 @@
 import pytest
-from tensor import Tensor
-from MyTorch.nn import Sigmoid, ReLU
+import sys
+sys.path.append('..')
+from mytorch import Tensor
+from mytorch.nn import Sigmoid, ReLU
 
 import torch
 from torch.nn import functional as F

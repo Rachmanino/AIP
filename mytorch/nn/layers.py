@@ -3,7 +3,7 @@ import numpy as np
 from typing import Optional, Tuple, List, Union
 
 from backend import NDArray, Device, fn
-from tensor import Tensor
+from mytorch.tensor import Tensor
 
 from copy import deepcopy
 

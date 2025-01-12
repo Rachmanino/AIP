@@ -17,8 +17,7 @@
 #include<pybind11/numpy.h>
 #include<pybind11/stl.h>
 
-#define MAX_DIMS 10
-#define SEED 114514ULL
+#define MAX_DIMS 100 // Max # dimensions
 
 namespace py = pybind11;
 typedef float scalar_t; // Currently only support float type
