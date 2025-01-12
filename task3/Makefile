@@ -16,4 +16,4 @@ test:
 
 # Export the environment to the yaml file
 export_env:
-	conda env export > env.yaml
+	conda env export > ../env.yaml
