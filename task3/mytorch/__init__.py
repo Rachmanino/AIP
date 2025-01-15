@@ -1,2 +1,2 @@
-from .tensor import Tensor
-from . import nn, datasets, utils
+from .autograd import *
+from . import nn, datasets

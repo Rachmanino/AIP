@@ -1,20 +1,16 @@
 from functools import reduce
+from operator import add, mul
 
-__all__ = ['prod', 'sum', 'max', 'min', 'unique']
+__all__ = ['_prod', '_sum', '_unique',
+           ]
 
-def prod(iterable):
-    return reduce(lambda x, y: x * y, iterable, 1)
+def _prod(iterable):
+    return reduce(mul, iterable, 1)
 
-def sum(iterable):
-    return reduce(lambda x, y: x + y, iterable, 0)
+def _sum(iterable):
+    return reduce(add, iterable)
 
-def max(iterable):
-    return reduce(lambda x, y: x if x > y else y, iterable, float('-inf'))
-
-def min(iterable):
-    return reduce(lambda x, y: x if x < y else y, iterable, float('inf'))
-
-def unique(iterable):
+def _unique(iterable):
     return list(set(iterable))
 
 

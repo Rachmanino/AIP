@@ -132,7 +132,7 @@ void conv2d_k33p1s1_bwd(
     grad_bias = grad_bias.reshape({C2});
 }
 
-__global__ void maxpooling2d_k22s2_fwd_kernel(
+__global__ void maxpool2d_k22s2_fwd_kernel(
     scalar_t* i, 
     scalar_t* o, 
     int N, int C, int H, int W) 
@@ -143,17 +143,17 @@ __global__ void maxpooling2d_k22s2_fwd_kernel(
     o[o_idx] = fmax(fmax(i[i_idx], i[i_idx + 1]), fmax(i[i_idx + W], i[i_idx + W + 1]));
 }
 
-void maxpooling2d_k22s2_fwd(
+void maxpool2d_k22s2_fwd(
     NDArray& input, // (N, C, H, W)
     NDArray& output // (N, C, H//2, W//2)
 ) {
     int N = input.shape[0], C = input.shape[1], H = input.shape[2], W = input.shape[3];
     assert(2*output.shape[2] == H && 2*output.shape[3] == W);
-    maxpooling2d_k22s2_fwd_kernel<<<dim3(N, C), dim3(H/2, W/2)>>>(input.p, output.p, N, C, H, W);
+    maxpool2d_k22s2_fwd_kernel<<<dim3(N, C), dim3(H/2, W/2)>>>(input.p, output.p, N, C, H, W);
 }
 
 
-__global__ void maxpooling2d_k22s2_bwd_kernel(
+__global__ void maxpool2d_k22s2_bwd_kernel(
     scalar_t* i, 
     scalar_t* o,
     scalar_t* grad_o,
@@ -169,7 +169,7 @@ __global__ void maxpooling2d_k22s2_bwd_kernel(
     grad_i[i_idx + W + 1] = (i[i_idx + W + 1] == o[o_idx]) * grad_o[o_idx];
 }
 
-void maxpooling2d_k22s2_bwd(
+void maxpool2d_k22s2_bwd(
     NDArray& input, // (N, C, H, W)
     NDArray& output, // (N, C, H//2, W//2)
     NDArray& grad_output, // (N, C, H//2, W//2)
@@ -178,7 +178,7 @@ void maxpooling2d_k22s2_bwd(
     thrust::device_ptr<scalar_t> grad_input_ptr(grad_input.p);
     thrust::fill(grad_input_ptr, grad_input_ptr + grad_input.size, 0);
     int N = input.shape[0], C = input.shape[1], H = input.shape[2], W = input.shape[3];
-    maxpooling2d_k22s2_bwd_kernel<<<dim3(N, C), dim3(H/2, W/2)>>>(input.p, output.p, grad_output.p, grad_input.p, N, C, H, W);
+    maxpool2d_k22s2_bwd_kernel<<<dim3(N, C), dim3(H/2, W/2)>>>(input.p, output.p, grad_output.p, grad_input.p, N, C, H, W);
 }
 
 __global__ void row_max_kernel(
@@ -238,7 +238,7 @@ __global__ void celoss_kernel(
 
 }
 
-scalar_t celoss_fwd(
+NDArray& celoss_fwd(
     NDArray& prob, // (N, C)
     NDArray& tgt   // (N)
 ) {
@@ -249,7 +249,8 @@ scalar_t celoss_fwd(
     thrust::device_ptr<scalar_t> losses_ptr(losses);
     scalar_t loss = thrust::reduce(losses_ptr, losses_ptr + prob.shape[0]) / prob.shape[0];
     cudaFree(losses);
-    return loss;
+    NDArray* loss_ptr = new NDArray({1}, loss, prob.device);
+    return *loss_ptr;
 }
 
 __global__ void softmax_ce_bwd_kernel(
@@ -267,11 +268,13 @@ __global__ void softmax_ce_bwd_kernel(
 void softmax_ce_bwd(
     NDArray& prob, // (N, C)
     NDArray& tgt,  // (N)
-    scalar_t grad_loss,
+    NDArray& grad_loss, // (1)
     NDArray& grad_input // (N, C)
 ) {
+    
+    scalar_t grad_loss_val = grad_loss.tolist()[0];
     softmax_ce_bwd_kernel<<<prob.shape[0], prob.shape[1]>>>(
-        prob.p, tgt.p, grad_loss, grad_input.p, prob.shape[0], prob.shape[1]);
+        prob.p, tgt.p, grad_loss_val, grad_input.p, prob.shape[0], prob.shape[1]);
 }
 
 void relu_fwd(

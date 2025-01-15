@@ -10,10 +10,12 @@ clean:
 	rm -rf .pytest_cache 
 	
 # Run all tests in tests/
-test:
+test: 
+	make clean
+	make
 	cd tests
 	pytest tests/*.py
 
 # Export the environment to the yaml file
-export_env:
+export_env: 
 	conda env export > ../env.yaml

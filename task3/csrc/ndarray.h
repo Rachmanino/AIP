@@ -57,6 +57,7 @@ class NDArray {
         NDArray& T2d(); // transpose
         NDArray& swap(const int axis1, const int axis2); //! Only useable for NDArray on GPU
 
+        bool operator == (const NDArray& B); // element-wise comparison
         NDArray& operator + (const NDArray& B); // element-wise addition
         NDArray& operator - (const NDArray& B); // element-wise subtraction
         NDArray& operator * (const NDArray& B); // 2D matrix multiplic
@@ -73,5 +74,7 @@ NDArray& sub_scalar(const NDArray& A, const scalar_t B);
 NDArray& div_scalar(const NDArray& A, const scalar_t B);
 
 NDArray& pow_scalar(const NDArray& A, const scalar_t B); 
+NDArray& log_(const NDArray& A);
+NDArray& exp_(const NDArray& A);
 
 #endif

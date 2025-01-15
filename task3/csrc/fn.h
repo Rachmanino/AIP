@@ -17,15 +17,15 @@ void conv2d_k33p1s1_bwd(
     NDArray& grad_kernel, 
     NDArray& grad_bias);
 
-void maxpooling2d_k22s2_fwd(NDArray& input, NDArray& output);
-void maxpooling2d_k22s2_bwd(NDArray& input, NDArray& output, NDArray& grad_output, 
+void maxpool2d_k22s2_fwd(NDArray& input, NDArray& output);
+void maxpool2d_k22s2_bwd(NDArray& input, NDArray& output, NDArray& grad_output, 
     NDArray& grad_input);
 
 
 void softmax_fwd(NDArray& input, 
     NDArray& output);
-scalar_t celoss_fwd(NDArray& prob, NDArray& tgt);
-void softmax_ce_bwd(NDArray& prob, NDArray& tgt, scalar_t grad_loss,
+NDArray& celoss_fwd(NDArray& prob, NDArray& tgt);
+void softmax_ce_bwd(NDArray& prob, NDArray& tgt, NDArray& grad_loss,
     NDArray& grad_input);
 
 void relu_fwd(NDArray& input, NDArray& output);

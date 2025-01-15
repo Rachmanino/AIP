@@ -1,5 +1,5 @@
 """
-Implementation of Tensor class, which wraps NDArray.
+`Tensor` class: wraps NDArray and provides autograd.
 """
 
 import torch
@@ -9,7 +9,7 @@ from typing import Optional, Union, Tuple, List
 from backend import NDArray, Device, fn # underlying CUDA-implemented NDArray and functions
 from .utils import *
 
-__all__ = ['Tensor']
+__all__ = ['Tensor', 'Op', 'sqrt', 'log', 'exp']
 
 class Tensor(NDArray):
     """The class wrapping NDArray to provide convenient interfaces and automatic differentiation."""
@@ -36,7 +36,7 @@ class Tensor(NDArray):
             raise NotImplementedError(f"Unsupported input type: {type(input)}")
         self.requires_grad = requires_grad
         self.op = None
-        self.inputs = None
+        self.inputs = []
 
     
     ### Basic properties ### 
@@ -86,6 +86,12 @@ class Tensor(NDArray):
         """Convert a tensor to torch.Tensor"""
         return torch.tensor(self.numpy(), requires_grad=self.requires_grad)
     
+    def item(self) -> float:
+        """Return the value of this tensor as a Python number."""
+        assert self.size == 1, "Only scalar tensor can be converted to a Python number!"
+        assert self.shape == (1,), "Only scalar tensor can be converted to a Python number!"
+        return self.numpy().item()
+    
     ### Move between devices ### 
     def to(self, device: str) -> 'Tensor':
         """Move a tensor to device`device`."""
@@ -103,12 +109,12 @@ class Tensor(NDArray):
     def T(self) -> 'Tensor':
         """Return the transpose of a 2D tensor."""
         assert self.ndim == 2, "Tensor.T only supports transposing 2D tensors!"
-        return Tensor(super().T())
+        return Transpose()(self)
     
     ### Basic operations ### 
     def detach(self) -> 'Tensor':
         """Detach a tensor from the computation graph."""
-        return Tensor(self, requires_grad=False)
+        return Tensor(self, requires_grad=self.requires_grad)
 
     def reshape(self, shape: Tuple[int]) -> 'Tensor':
         """
@@ -121,16 +127,16 @@ class Tensor(NDArray):
             if shape[i] == -1: 
                 count += 1
                 assert count <= 1, "At most one dimension can be inferred"
-                shape[i] = self.size // -prod(shape)
-        return Tensor(super().reshape(shape))
+                shape[i] = self.size // -_prod(shape)
+        return Reshape(tuple(shape))(self)
 
 
     def swapaxes(self, axis1: int, axis2: int) -> 'Tensor':
         """Swap two axes of a tensor."""
         assert 0 <= axis1 < self.ndim and 0 <= axis2 < self.ndim, "At least one of the axes is out of range!"
-        return Tensor(super().swap(axis1, axis2))
+        return SwapAxes(axis1, axis2)(self)
     
-    ### Fill functions ### 
+    ### Const tensor factory ### 
     @classmethod
     def const(cls, 
              shape: Tuple[int], 
@@ -156,7 +162,7 @@ class Tensor(NDArray):
                    device: str = 'gpu',
                    requires_grad: bool = False) -> 'Tensor':
         """Generate a tensor filled with 0 of `tensor`'s shape."""
-        return cls.zeros(tensor.shape, 0., device, requires_grad)
+        return cls.zeros(tensor.shape, device, requires_grad)
     
     @classmethod
     def ones(cls,
@@ -172,7 +178,7 @@ class Tensor(NDArray):
                   device: str = 'gpu',
                   requires_grad: bool = False) -> 'Tensor':
         """Generate a tensor filled with 1 of `tensor`'s shape."""
-        return cls.ones(tensor.shape, 1., device, requires_grad)
+        return cls.ones(tensor.shape, device, requires_grad)
     
     ### Random number generation ### 
     @classmethod
@@ -202,8 +208,10 @@ class Tensor(NDArray):
     def backward(self, grad: Optional['Tensor'] = None) -> None:
         """Backward pass to compute gradients."""
         assert self.requires_grad, "This tensor does not require gradient!"
-        assert self.grad.shape == self.shape, "Shape mismatch between this tensor and its gradient!"
-        raise NotImplementedError() #TODO: 实现自动微分算法
+        if grad is None:
+            grad = Tensor.ones_like(self)
+        compute_grad(self, grad)
+        
     
     def zero_grad(self) -> None:
         """Zero out the gradient of this tensor."""
@@ -229,6 +237,12 @@ class Tensor(NDArray):
         self.requires_grad = any(input.requires_grad for input in inputs)
     
     ### Overloaded operators w/ autograd ###
+    def __eq__(self, other: 'Tensor') -> 'Tensor':
+        return NDArray.__eq__(self, other)
+    
+    def __hash__(self) -> int:
+        return hash(id(self))
+    
     def __add__(self, other: Union['Tensor', float]) -> 'Tensor':
         if isinstance(other, Tensor):
             return EwiseAdd()(self, other)
@@ -266,26 +280,79 @@ class Tensor(NDArray):
     
     def __truediv__(self, other: Union['Tensor', float]) -> 'Tensor':
         if isinstance(other, Tensor):
-            return self * (other ** -1)
+            return EwiseDiv()(self, other)
         elif isinstance(other, float):
-            return self * (1 / other)
+            return ScalarDiv(other)(self)
         else:
-            raise NotImplementedError(f"Unsupported type for true division: {type(other)}")
+            raise NotImplementedError(f"Unsupported type for division: {type(other)}")
 
     def __rtruediv__(self, other: Union['Tensor', float]) -> 'Tensor':
-        return self ** -1 * other
+        if isinstance(other, Tensor):
+            return EwiseDiv()(other, self)
+        elif isinstance(other, float):
+            return other * (self ** -1)
+        else:
+            raise NotImplementedError(f"Unsupported type for division: {type(other)}")
         
-    #TODO: matmul, exp, log, sum, mean, max, min, broadcast, reshape(改造)....
+    def sqrt(self) -> 'Tensor':
+        return sqrt(self)
 
-    #TODO: 实现自动微分算法
+    def exp(self) -> 'Tensor':
+        return exp(self)
     
+    def log(self) -> 'Tensor':
+        return log(self)
+        
+    def __matmul__(self, other: 'Tensor') -> 'Tensor':
+        return matmul(self, other)
+        
+    
+def find_topo_sort(node_list: List[Tensor]) -> List[Tensor]:
+    topo_order = []
+    visited = set()
+    for node in node_list:
+        topo_sort_dfs(node, visited, topo_order)
+    return topo_order
+    
+
+def topo_sort_dfs(node, visited, topo_order):
+    """Post-order DFS"""
+    ## 请于此填写你的代码
+    if node in visited:
+        return
+    visited.add(node)
+    for input_node in node.inputs:
+        topo_sort_dfs(input_node, visited, topo_order)
+    topo_order.append(node)
+
+def compute_grad(node: Tensor, grad: Tensor) -> None:
+    node2grad = {}
+    node2grad[node] = [grad]
+    reverse_topo_order = list(reversed(find_topo_sort([node])))
+
+    for node in reverse_topo_order:
+        node.grad = _sum(node2grad[node])
+        if node.op is not None:
+            for input_node, grad in zip(node.inputs, node.op.grad_as_tuple(node.grad, node)):
+                if input_node not in node2grad:
+                    node2grad[input_node] = []
+                node2grad[input_node].append(grad)
+
 
 class Op():
     """The base class for all operations."""
     def __call__(self, *args):
         return Tensor._make_from_op(self, args)
-
     
+    def grad_as_tuple(self, grad: Tensor, node: Tensor) -> Tuple[Tensor]:
+        output = self.gradient(grad, node)
+        if isinstance(output, tuple):
+            return output
+        elif isinstance(output, list):
+            return tuple(output)
+        else:
+            return (output,)
+   
 class EwiseAdd(Op):
     """Element-wise addition operation."""
     def compute(self, x: NDArray, y: NDArray):
@@ -332,6 +399,25 @@ class Negate(Op):
     def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
         return -grad
     
+class EwiseDiv(Op):
+    """Element-wise division operation."""
+    def compute(self, x: NDArray, y: NDArray) -> NDArray:
+        return NDArray.__truediv__(x, y)
+    
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad / node.inputs[1], -grad * node.inputs[0] / node.inputs[1] ** 2
+    
+class ScalarDiv(Op):
+    """Scalar division operation."""
+    def __init__ (self, scalar: float):
+        self.scalar = scalar
+
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.__truediv__(x, self.scalar)
+        
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad / self.scalar
+    
 class ScalarPow(Op):
     """Scalar power operation."""
     def __init__ (self, scalar: float):
@@ -342,6 +428,76 @@ class ScalarPow(Op):
         
     def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
         return grad * self.scalar * node.inputs[0] ** (self.scalar - 1)
+def sqrt(x: Tensor) -> Tensor:
+    return ScalarPow(0.5)(x)
+    
+class Log(Op):
+    """Logarithm operation."""
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.log(x)
+        
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad / node.inputs[0]
+def log(x: Tensor) -> Tensor:
+    return Log()(x)
+    
+class Exp(Op):
+    """Exponential operation."""
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.exp(x)
+        
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad * node
+def exp(x: Tensor) -> Tensor:
+    return Exp()(x)
+
+class Transpose(Op):
+    """Transpose operation."""
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.T(x)
+        
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad.T()
+
+class Reshape(Op):
+    """Reshape operation."""
+    def __init__ (self, shape: Tuple[int]):
+        self.shape = shape
+
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.reshape(x, self.shape)
+        
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad.reshape(node.inputs[0].shape)
+
+class SwapAxes(Op):
+    def __init__ (self, axis1: int, axis2: int):
+        self.axis1 = axis1
+        self.axis2 = axis2
+    
+    def compute(self, x: NDArray) -> NDArray:
+        return NDArray.swap(x, self.axis1, self.axis2)
+    
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad.swap(self.axis1, self.axis2)
+    
+class Matmul(Op):
+    """Matrix multiplication operation."""
+    def compute(self, x: NDArray, y: NDArray) -> NDArray:
+        return NDArray.__matmul__(x, y)
+    
+    def gradient(self, grad: Tensor, node: Tensor) -> Tensor:
+        return grad @ node.inputs[1].T, node.inputs[0].T @ grad
+def matmul(x: Tensor, y: Tensor) -> Tensor:
+    assert x.ndim == 2 and y.ndim == 2, "Matrix multiplication requires 2D tensors!"
+    assert x.shape[1] == y.shape[0], "Matrix multiplication requires the inner dimensions to match!"
+    return Matmul()(x, y)
+
+#TODO: summation. max, min, broadcast
+    
+
+
+    
     
 
     

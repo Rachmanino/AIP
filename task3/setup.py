@@ -8,7 +8,7 @@ dir = 'csrc'
 src = [f'{dir}/{src}' for src in os.listdir(dir) if src.endswith('.cu') or src.endswith('.cpp')]
 
 setup(
-    name = 'backend',
+    name = 'MyTorch',
     version=__version__,
     author='Tong WU',
     author_email='2200013212@stu.pku.edu.cn',

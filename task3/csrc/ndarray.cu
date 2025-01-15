@@ -156,6 +156,23 @@ NDArray& NDArray::to(Device device) {
     }
 }
 
+bool NDArray::operator == (const NDArray& B) {
+    if (this->shape != B.shape) {
+        return false;
+    }
+    if (this->device == CPU) {
+        for (int i = 0; i < this->size; i++) {
+            if (this->p[i] != B.p[i]) {
+                return false;
+            }
+        }
+        return true;
+    } else {
+        thrust::device_ptr<scalar_t> A_ptr(this->p), B_ptr(B.p);
+        return thrust::equal(A_ptr, A_ptr + this->size, B_ptr);
+    }
+}
+
 NDArray& NDArray::operator + (const NDArray& B) {
     assert(this->shape == B.shape);
     NDArray* C = new NDArray(this->shape, this->device);
@@ -319,5 +336,19 @@ NDArray& pow_scalar(const NDArray& A, const scalar_t B) {
     NDArray* C = new NDArray(A.shape, A.device);
     thrust::device_ptr<scalar_t> A_ptr(A.p), C_ptr(C->p);
     thrust::transform(A_ptr, A_ptr + A.size, C_ptr, [=] __device__ (scalar_t x) { return pow(x, B); });
+    return *C;
+}
+
+NDArray& log_(const NDArray& A) {
+    NDArray* C = new NDArray(A.shape, A.device);
+    thrust::device_ptr<scalar_t> A_ptr(A.p), C_ptr(C->p);
+    thrust::transform(A_ptr, A_ptr + A.size, C_ptr, [=] __device__ (scalar_t x) { return log(x); });
+    return *C;
+}
+
+NDArray& exp_(const NDArray& A) {
+    NDArray* C = new NDArray(A.shape, A.device);
+    thrust::device_ptr<scalar_t> A_ptr(A.p), C_ptr(C->p);
+    thrust::transform(A_ptr, A_ptr + A.size, C_ptr, [=] __device__ (scalar_t x) { return exp(x); });
     return *C;
 }
